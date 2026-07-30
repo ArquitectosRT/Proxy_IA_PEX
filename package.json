@@ -1,0 +1,10 @@
+{
+  "name": "proxy-ia-pex",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Proxy de IA do gabinete ArquitectosRT para o Nível 2 do PEX (extração da ficha da obra a partir da capa das peças desenhadas). Sem dependências.",
+  "engines": {
+    "node": ">=18"
+  }
+}
