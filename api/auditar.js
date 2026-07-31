@@ -81,7 +81,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: modelo,
-        max_tokens: 8192,
+        // Espaço para o pensamento adaptativo do Sonnet CABER e ainda produzir o
+        // JSON. Com 8192 o pensamento esgotava o limite e não saía texto.
+        max_tokens: 16000,
         system: SISTEMA,
         messages: [
           { role: "user", content: `Documentos da entrega a auditar:\n\n${partes.join("\n\n")}` },
@@ -100,7 +102,13 @@ export default async function handler(req, res) {
     }
     const bloco = (dados.content || []).find((b) => b.type === "text");
     if (!bloco) {
-      return res.status(502).json({ error: "Resposta do modelo sem texto." });
+      const razao = dados.stop_reason || "desconhecido";
+      return res.status(502).json({
+        error: `Resposta do modelo sem texto (stop_reason: ${razao}). `
+          + (razao === "max_tokens"
+            ? "O pensamento esgotou o limite — aumentar max_tokens ou reduzir o conteúdo."
+            : "Tente de novo."),
+      });
     }
     const auditoria = JSON.parse(bloco.text);
     return res.status(200).json({ auditoria, modelo });
