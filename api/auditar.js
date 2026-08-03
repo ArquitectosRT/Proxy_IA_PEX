@@ -81,14 +81,17 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: modelo,
-        // Espaço para o pensamento adaptativo do Sonnet CABER e ainda produzir o
-        // JSON. Com 8192 o pensamento esgotava o limite e não saía texto.
-        max_tokens: 16000,
+        // Tecto de saída generoso: com os documentos completos, pensamento + o
+        // JSON dos achados chegavam a passar dos 16000 e o JSON saía cortado.
+        max_tokens: 24000,
         system: SISTEMA,
         messages: [
           { role: "user", content: `Documentos da entrega a auditar:\n\n${partes.join("\n\n")}` },
         ],
-        output_config: { format: { type: "json_schema", schema: ESQUEMA } },
+        thinking: { type: "adaptive" },
+        // Esforço «médio» limita o pensamento (não corre desenfreado, custa e
+        // demora menos) sem perder capacidade — deixa espaço para o JSON caber.
+        output_config: { effort: "medium", format: { type: "json_schema", schema: ESQUEMA } },
       }),
     });
 
