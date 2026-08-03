@@ -151,8 +151,9 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: modelo,
         // O relatório é longo (parâmetros + não-conformidades + observações +
-        // prioridades) e o pensamento também: tecto folgado.
-        max_tokens: 32000,
+        // prioridades) e o pensamento também. Já se viu o JSON sair cortado a
+        // 32000 («Unterminated string») — tecto bem folgado.
+        max_tokens: 48000,
         system: SISTEMA,
         messages: [
           { role: "user", content: `Entrega PEX a avaliar:\n\n${partes.join("\n\n")}` },
