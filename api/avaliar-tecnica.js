@@ -159,7 +159,11 @@ export default async function handler(req, res) {
           { role: "user", content: `Entrega PEX a avaliar:\n\n${partes.join("\n\n")}` },
         ],
         thinking: { type: "adaptive" },
-        output_config: { effort: "high", format: { type: "json_schema", schema: ESQUEMA } },
+        // Esforço médio, não alto: com «high» a função excedia os 300 s que o
+        // plano da Vercel permite (FUNCTION_INVOCATION_TIMEOUT). A auditoria
+        // corre a médio com bons resultados; se um dia o plano subir para Pro
+        // (800 s), pode voltar-se a «high».
+        output_config: { effort: "medium", format: { type: "json_schema", schema: ESQUEMA } },
       }),
     });
 

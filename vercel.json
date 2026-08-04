@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/avaliar-tecnica.js": { "maxDuration": 300 },
+    "api/auditar.js": { "maxDuration": 300 },
+    "api/clausulas.js": { "maxDuration": 300 }
+  }
+}
