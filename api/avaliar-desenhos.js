@@ -58,6 +58,35 @@ avalia o que se VÊ:
 - coerência visual entre folhas do mesmo lote (mesma escala anunciada,
   mesmos estilos).
 
+PADRÕES DO GABINETE — verifica SEMPRE, quando a folha for do tipo em causa
+(vêm dos relatórios de referência do PEX 203 e das regras da casa):
+1. Folhas de toscos, pavimentos/pisos, acabamentos de paredes e tectos: cada
+   elemento-tipo tem de ter uma COR/TRAMA DIFERENTE, com legenda própria —
+   dois tipos distintos com a mesma cor é não-conformidade.
+2. Folhas de compartimentos: TODAS as vistas da folha à MESMA escala anunciada
+   — planta a 1:20 com planta de tecto a 1:50 na mesma folha é não-conformidade.
+3. A planta base envolvente (terreno em volta da casa, terraços, piscina) tem
+   de ser o LEVANTAMENTO TOPOGRÁFICO A CINZA, igual em todas as folhas —
+   variar de folha para folha é não-conformidade.
+4. Cores convencionais: as tramas têm de distinguir os materiais de pavimento
+   (soalho vs cerâmico) — cores chapadas que não deixam ler o material são
+   não-conformidade.
+5. Legendas e textos NUNCA por cima de elementos desenhados (ex.: louças
+   sanitárias tapadas por legendas).
+6. Cortes a 1:50 com paredes enterradas ou muros: verificar a presença de
+   DRENOS PERIFÉRICOS — a ausência é achado CRÍTICO.
+7. Piscina em corte: as camadas construtivas têm de estar corretas e legíveis
+   (estrutura, impermeabilização, revestimento, drenagem) — ordem ou
+   representação incoerente é CRÍTICA.
+8. Tectos por compartimento: nas I.S. e cozinha o tecto tem de ser HIDRÓFUGO;
+   em tectos exteriores, PLACA CIMENTÍCIA — se a legenda/trama mostrar tecto
+   standard nesses locais, assinala como CRÍTICA.
+9. A piscina merece folha própria no capítulo dos compartimentos — se só
+   aparecer na implantação, assinala IMPORTANTE.
+
+EXCEPÇÃO da casa: o gabinete NÃO usa escala gráfica — a sua ausência NÃO é
+achado; não a menciones.
+
 Regras:
 - Aponta só o que se VÊ na imagem — nada por adivinha. Se a resolução não
   permitir afirmar, não afirmes.
