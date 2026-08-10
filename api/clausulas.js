@@ -8,6 +8,8 @@
 //
 // Modelo: claude-sonnet-5 por omissão (ANTHROPIC_MODEL_CLAUSULAS para mudar).
 
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const ESQUEMA = {
   type: "object",
   additionalProperties: false,
@@ -43,12 +45,9 @@ Regras invioláveis do molde:
 Devolve uma entrada por cada chave pedida.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe da equipa inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "clausulas", 6)) return;
+  if (!corpoAceitavel(req, res, 3 * 1024 * 1024)) return;
   const ctx = (req.body && req.body.contexto) || {};
   const chaves = (req.body && req.body.chaves) || [];
   if (!Array.isArray(chaves) || chaves.length === 0) {
@@ -60,7 +59,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Falta o conteúdo do projecto (MQ/Memória)." });
   }
 
-  const modelo = process.env.ANTHROPIC_MODEL_CLAUSULAS || "claude-sonnet-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_CLAUSULAS", "claude-sonnet-5");
   const utilizador =
     `MAPA DE QUANTIDADES (fonte dos artigos):\n"""\n${mq}\n"""\n\n` +
     `MEMÓRIA DESCRITIVA:\n"""\n${mem}\n"""\n\n` +

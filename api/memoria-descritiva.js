@@ -3,6 +3,8 @@
 // de raiz). O mesmo padrão das cláusulas do CE: o modelo propõe, o arquitecto
 // revê no ecrã, e só então se grava na ficha — que depois gera a Memória.
 
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const ESQUEMA = {
   type: "object",
   additionalProperties: false,
@@ -56,12 +58,9 @@ REGRAS ABSOLUTAS:
 - Sem juízos de valor nem marketing; linguagem técnica sóbria do gabinete.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "memoria-descritiva", 6)) return;
+  if (!corpoAceitavel(req, res, 3 * 1024 * 1024)) return;
 
   const { contexto, chaves } = req.body || {};
   const mq = contexto && contexto.mapa_quantidades;
@@ -76,7 +75,7 @@ export default async function handler(req, res) {
     .map((c) => `- ${c}: ${AMBITO[c] || "secção da memória"}`)
     .join("\n");
 
-  const modelo = process.env.ANTHROPIC_MODEL_CLAUSULAS || "claude-sonnet-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_MEMORIA", "claude-sonnet-5");
   try {
     const resposta = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

@@ -17,6 +17,8 @@
 //   ANTHROPIC_API_KEY · APP_PASSWORD · ANTHROPIC_MODEL (opcional).
 
 // Saída estruturada: obriga o modelo a devolver exactamente estes campos.
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const RESUMO_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -64,12 +66,9 @@ Regras invioláveis:
 - O texto_memoria é um RASCUNHO para o arquitecto rever e completar — di-lo na ressalva final.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe da equipa inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "pdm-resumo", 12)) return;
+  if (!corpoAceitavel(req, res, 512 * 1024)) return;
 
   const corpo = req.body || {};
   const { municipio, classe_nome, artigos_texto, numeros, achados } = corpo;
@@ -93,7 +92,7 @@ export default async function handler(req, res) {
     ...Object.entries(artigos_texto || {}).map(([k, v]) => `\n### ${k}\n${v}`),
   ].join("\n");
 
-  const modelo = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_PDM", "claude-sonnet-5");
   try {
     const resposta = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

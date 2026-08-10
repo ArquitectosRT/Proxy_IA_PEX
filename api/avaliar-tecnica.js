@@ -10,6 +10,8 @@
 // página (a camada de texto do PDF: legendas, notas-chave, cotas, rótulos).
 // Modelo: claude-sonnet-5 (configurável por ANTHROPIC_MODEL_AVALIACAO).
 
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const ESQUEMA = {
   type: "object",
   additionalProperties: false,
@@ -144,12 +146,9 @@ ausência nunca é achado.
 Não inventes: cita sempre o artigo/código/folha exactos. Sê tão exigente como o relatório do 203 — encontrou 28 observações num projecto de 7,6/10.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe da equipa inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "avaliar-tecnica", 4)) return;
+  if (!corpoAceitavel(req, res, 4 * 1024 * 1024)) return;
   const docs = (req.body && req.body.docs) || {};
   const partes = [];
   for (const [chave, rotulo] of [
@@ -166,7 +165,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Nenhum documento com texto para avaliar." });
   }
 
-  const modelo = process.env.ANTHROPIC_MODEL_AVALIACAO || "claude-sonnet-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_AVALIACAO", "claude-sonnet-5");
   try {
     const resposta = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

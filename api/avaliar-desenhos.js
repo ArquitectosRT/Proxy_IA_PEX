@@ -8,6 +8,8 @@
 // sobreposições, esquadria. Limite honesto (dito no esquema): a resolução da
 // rasterização não permite julgar espessuras de traço ao milímetro.
 
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const ESQUEMA = {
   type: "object",
   additionalProperties: false,
@@ -96,12 +98,9 @@ Regras:
 - NUNCA aprovas: assinalas e propões. A decisão é dos arquitectos.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "avaliar-desenhos", 6)) return;
+  if (!corpoAceitavel(req, res, 6 * 1024 * 1024)) return;
 
   const { folhas } = req.body || {};
   if (!Array.isArray(folhas) || folhas.length === 0) {
@@ -109,6 +108,19 @@ export default async function handler(req, res) {
   }
   if (folhas.length > 8) {
     return res.status(400).json({ error: "Lote demasiado grande (máximo 8 folhas)." });
+  }
+  // Validar o tipo de imagem (só formatos que a Anthropic aceita) e travar o
+  // volume total do lote — o limite «8 folhas» conta folhas, não bytes.
+  const TIPOS_OK = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  let bytesBase64 = 0;
+  for (const f of folhas) {
+    if (f.mediaType && !TIPOS_OK.has(f.mediaType)) {
+      return res.status(400).json({ error: `Tipo de imagem não aceite: ${f.mediaType}.` });
+    }
+    bytesBase64 += f.imagem ? String(f.imagem).length : 0;
+  }
+  if (bytesBase64 > 6 * 1024 * 1024) {
+    return res.status(413).json({ error: "As imagens do lote são demasiado grandes; envie menos folhas." });
   }
 
   // conteúdo multimodal: rótulo + imagem, folha a folha
@@ -125,7 +137,7 @@ export default async function handler(req, res) {
     text: "Avalia cada folha acima (usa o número indicado antes de cada imagem).",
   });
 
-  const modelo = process.env.ANTHROPIC_MODEL_AVALIACAO || "claude-sonnet-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_AVALIACAO_DESENHOS", "claude-sonnet-5");
   try {
     const resposta = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

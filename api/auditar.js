@@ -9,6 +9,8 @@
 //
 // É uma proposta: o arquitecto lê e valida. A app não age sobre os achados.
 
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const ESQUEMA = {
   type: "object",
   additionalProperties: false,
@@ -49,12 +51,9 @@ Gravidade:
 Regras: ortografia pré-AO90; não inventes — se um documento não tiver texto suficiente, di-lo no resumo em vez de supor; sê concreto na referência (aponta os pontos exactos cruzados). Se o conteúdo vier truncado, considera-o e assinala que a leitura foi parcial.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe da equipa inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "auditar", 6)) return;
+  if (!corpoAceitavel(req, res, 4 * 1024 * 1024)) return;
   const docs = (req.body && req.body.docs) || {};
   const partes = [];
   for (const [chave, rotulo] of [
@@ -70,7 +69,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Nenhum documento com texto para auditar." });
   }
 
-  const modelo = process.env.ANTHROPIC_MODEL_AUDITORIA || "claude-sonnet-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_AUDITORIA", "claude-sonnet-5");
   try {
     const resposta = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

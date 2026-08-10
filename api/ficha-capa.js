@@ -15,6 +15,8 @@
 
 // Esquema da ficha — a saída estruturada obriga o modelo a devolver EXACTAMENTE
 // estes campos. Valores em falta ficam "[a confirmar]" (regra do molde).
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+
 const FICHA_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -47,18 +49,15 @@ Regras invioláveis:
 - Distingue com cuidado: nome_projecto é o nome curto da casa; designacao_obra é a descrição da intervenção; requerente/dono_obra são as pessoas; local_obra é a morada.`;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Só aceita POST." });
-  }
-  if ((req.headers["x-app-password"] || "") !== process.env.APP_PASSWORD) {
-    return res.status(401).json({ error: "Palavra-passe da equipa inválida." });
-  }
+  if (!autorizar(req, res)) return;
+  if (!dentroDaTaxa(res, "ficha-capa", 20)) return;
+  if (!corpoAceitavel(req, res, 256 * 1024)) return;
   const texto = (req.body && req.body.texto_capa) || "";
   if (!String(texto).trim()) {
     return res.status(400).json({ error: "Falta o texto da capa (texto_capa)." });
   }
 
-  const modelo = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+  const modelo = escolherModelo("ANTHROPIC_MODEL_FICHA", "claude-haiku-4-5");
   try {
     const resposta = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
