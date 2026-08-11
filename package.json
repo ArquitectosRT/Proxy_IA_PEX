@@ -6,5 +6,8 @@
   "description": "Proxy de IA do gabinete ArquitectosRT para o Nível 2 do PEX (extração da ficha da obra a partir da capa das peças desenhadas). Sem dependências.",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
   }
 }
