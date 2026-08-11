@@ -123,6 +123,17 @@ export default async function handler(req, res) {
     return res.status(413).json({ error: "As imagens do lote são demasiado grandes; envie menos folhas." });
   }
 
+  // As regras da casa vêm da base editável do gabinete (aba «Regras das
+  // peças» da app). Tecto de 60 para proteger o tamanho do prompt.
+  const regras = Array.isArray(req.body && req.body.regras) ? req.body.regras.slice(0, 60) : [];
+  const blocoRegras = regras.length
+    ? "\n\nREGRAS DA CASA (base editável do gabinete — quando presentes, " +
+      "PREVALECEM sobre a lista embutida neste prompt):\n" +
+      regras.map((r) =>
+        `- [${r.gravidade}]${r.folha ? ` (folha: ${r.folha})` : ""} ${r.texto}`
+      ).join("\n")
+    : "";
+
   // conteúdo multimodal: rótulo + imagem, folha a folha
   const conteudo = [];
   for (const f of folhas) {
@@ -149,7 +160,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: modelo,
         max_tokens: 16000,
-        system: SISTEMA,
+        system: SISTEMA + blocoRegras,
         messages: [{ role: "user", content: conteudo }],
         thinking: { type: "adaptive" },
         output_config: { effort: "medium", format: { type: "json_schema", schema: ESQUEMA } },

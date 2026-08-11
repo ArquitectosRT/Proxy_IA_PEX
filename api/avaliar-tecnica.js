@@ -150,6 +150,16 @@ export default async function handler(req, res) {
   if (!dentroDaTaxa(res, "avaliar-tecnica", 4)) return;
   if (!corpoAceitavel(req, res, 4 * 1024 * 1024)) return;
   const docs = (req.body && req.body.docs) || {};
+  // As regras da casa vêm da base editável do gabinete (aba «Regras das
+  // peças» da app). Tecto de 60 para proteger o tamanho do prompt.
+  const regras = Array.isArray(req.body && req.body.regras) ? req.body.regras.slice(0, 60) : [];
+  const blocoRegras = regras.length
+    ? "\n\nREGRAS DA CASA (base editável do gabinete — quando presentes, " +
+      "PREVALECEM sobre a lista embutida neste prompt):\n" +
+      regras.map((r) =>
+        `- [${r.gravidade}]${r.folha ? ` (folha: ${r.folha})` : ""} ${r.texto}`
+      ).join("\n")
+    : "";
   const partes = [];
   for (const [chave, rotulo] of [
     ["memoria", "MEMÓRIA DESCRITIVA"],
@@ -180,7 +190,7 @@ export default async function handler(req, res) {
         // prioridades) e o pensamento também. Já se viu o JSON sair cortado a
         // 32000 («Unterminated string») — tecto bem folgado.
         max_tokens: 48000,
-        system: SISTEMA,
+        system: SISTEMA + blocoRegras,
         messages: [
           { role: "user", content: `Entrega PEX a avaliar:\n\n${partes.join("\n\n")}` },
         ],
