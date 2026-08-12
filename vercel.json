@@ -4,6 +4,7 @@
     "api/auditar.js": { "maxDuration": 300 },
     "api/clausulas.js": { "maxDuration": 300 },
     "api/avaliar-desenhos.js": { "maxDuration": 300 },
-    "api/memoria-descritiva.js": { "maxDuration": 300 }
+    "api/memoria-descritiva.js": { "maxDuration": 300 },
+    "api/rever-regra.js": { "maxDuration": 60 }
   }
 }
