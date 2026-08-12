@@ -60,7 +60,22 @@ avalia o que se VÊ:
 - coerência visual entre folhas do mesmo lote (mesma escala anunciada,
   mesmos estilos).
 
-PADRÕES DO GABINETE — verifica SEMPRE, quando a folha for do tipo em causa
+{{REGRAS_DA_CASA}}
+
+EXCEPÇÃO da casa: o gabinete NÃO usa escala gráfica — a sua ausência NÃO é
+achado; não a menciones.
+
+Regras:
+- Aponta só o que se VÊ na imagem — nada por adivinha. Se a resolução não
+  permitir afirmar, não afirmes.
+- Nota 0-10 por folha, ao padrão exigente do gabinete (7 é bom; 9-10 é raro).
+- Achados concretos e accionáveis, citando a zona da folha («no canto inferior
+  esquerdo», «na cadeia de cotas exterior do alçado sul»).
+- NUNCA aprovas: assinalas e propões. A decisão é dos arquitectos.`;
+
+// As regras visuais DE ORIGEM (calibradas no 203) — usadas quando a app não
+// envia regras próprias (versões antigas, memória inalcançável).
+const REGRAS_ORIGEM = `PADRÕES DO GABINETE — verifica SEMPRE, quando a folha for do tipo em causa
 (vêm dos relatórios de referência do PEX 203 e das regras da casa):
 1. Folhas de toscos, pavimentos/pisos, acabamentos de paredes e tectos: cada
    elemento-tipo tem de ter uma COR/TRAMA DIFERENTE, com legenda própria —
@@ -84,18 +99,27 @@ PADRÕES DO GABINETE — verifica SEMPRE, quando a folha for do tipo em causa
    em tectos exteriores, PLACA CIMENTÍCIA — se a legenda/trama mostrar tecto
    standard nesses locais, assinala como CRÍTICA.
 9. A piscina merece folha própria no capítulo dos compartimentos — se só
-   aparecer na implantação, assinala IMPORTANTE.
+   aparecer na implantação, assinala IMPORTANTE.`;
 
-EXCEPÇÃO da casa: o gabinete NÃO usa escala gráfica — a sua ausência NÃO é
-achado; não a menciones.
-
-Regras:
-- Aponta só o que se VÊ na imagem — nada por adivinha. Se a resolução não
-  permitir afirmar, não afirmes.
-- Nota 0-10 por folha, ao padrão exigente do gabinete (7 é bom; 9-10 é raro).
-- Achados concretos e accionáveis, citando a zona da folha («no canto inferior
-  esquerdo», «na cadeia de cotas exterior do alçado sul»).
-- NUNCA aprovas: assinalas e propões. A decisão é dos arquitectos.`;
+function seccaoRegras(regras) {
+  if (!Array.isArray(regras) || regras.length === 0) return REGRAS_ORIGEM;
+  const limpas = regras
+    .filter((r) => r && typeof r.texto === "string" && r.texto.trim())
+    .slice(0, 120);
+  let total = 0;
+  const dentro = [];
+  for (const r of limpas) {
+    total += r.texto.length;
+    if (total > 20000) break;
+    dentro.push(r);
+  }
+  if (dentro.length === 0) return REGRAS_ORIGEM;
+  return "REGRAS DA CASA (escritas pelo gabinete na app — verifica SEMPRE "
+    + "cada uma, quando a folha for do tipo em causa, com a gravidade "
+    + "indicada):\n"
+    + dentro.map((r, i) => `${i + 1}. [${r.gravidade || "IMPORTANTE"}`
+        + `${r.folha ? " · " + r.folha : ""}] ${r.texto}`).join("\n");
+}
 
 export default async function handler(req, res) {
   if (!autorizar(req, res)) return;
@@ -103,6 +127,8 @@ export default async function handler(req, res) {
   if (!corpoAceitavel(req, res, 6 * 1024 * 1024)) return;
 
   const { folhas } = req.body || {};
+  const sistema = SISTEMA.replace("{{REGRAS_DA_CASA}}",
+                                  seccaoRegras(req.body && req.body.regras));
   if (!Array.isArray(folhas) || folhas.length === 0) {
     return res.status(400).json({ error: "Sem folhas para avaliar." });
   }
@@ -149,7 +175,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: modelo,
         max_tokens: 16000,
-        system: SISTEMA,
+        system: sistema,
         messages: [{ role: "user", content: conteudo }],
         thinking: { type: "adaptive" },
         output_config: { effort: "medium", format: { type: "json_schema", schema: ESQUEMA } },

@@ -112,7 +112,20 @@ REFERENCIAL DO GABINETE (destilado da auditoria completa ao processo 203, a entr
    · folhas sem legenda ou sem cotas na camada de texto; rótulos com datas desactualizadas ou referências mortas
    · distinguir SEMPRE «limitação natural de fase» (especialidades por fechar) de «deficiência efectiva da arquitectura» (a corrigir já)
 
-2b. VERIFICAÇÕES TÉCNICAS OBRIGATÓRIAS DA CASA (procura provas na camada de
+{{REGRAS_DA_CASA}}
+
+EXCEPÇÃO da casa: o gabinete NÃO usa escala gráfica nas folhas — a sua
+ausência nunca é achado.
+
+3. SEVERIDADES: CRÍTICA (compromete concurso/segurança/gera trabalhos a mais), IMPORTANTE (afecta fiabilidade/leitura, corrigir antes de mercado), RECOMENDÁVEL (qualidade documental). PRIORIDADES: P1 imediata (antes de qualquer consulta), P2 curto prazo (revisão de fecho), P3 com as especialidades, P4 qualidade contínua.
+
+4. HONESTIDADE METODOLÓGICA (obrigatória): a tua matéria-prima é a CAMADA DE TEXTO dos documentos — lês legendas, notas-chave, cotas numéricas, rótulos e descrições, mas NÃO vês o desenho gráfico (traço, sobreposições visuais, escala do grafismo). Nunca afirmes juízos sobre o que não podes ver; regista essa fronteira em limitacoes_da_analise. Nas folhas das peças desenhadas, avalia o que o texto mostra: há legenda? há rótulo completo (processo, data, escala, número)? há notas-chave a ligar ao MQ? há cotas? Se uma folha não tiver texto nenhum, assinala-o.
+
+Não inventes: cita sempre o artigo/código/folha exactos. Sê tão exigente como o relatório do 203 — encontrou 28 observações num projecto de 7,6/10.`;
+
+// As secções 2b/2c DE ORIGEM (calibradas no 203) — usadas quando a app não
+// envia regras (versões antigas, memória do gabinete inalcançável).
+const REGRAS_ORIGEM = `2b. VERIFICAÇÕES TÉCNICAS OBRIGATÓRIAS DA CASA (procura provas na camada de
 texto e assinala tanto a violação como a impossibilidade de confirmar):
    · TECTOS POR COMPARTIMENTO: nas I.S. e cozinha o tecto TEM de ser hidrófugo;
      em tectos exteriores, placa cimentícia (Aquapanel ou equivalente). Se o MQ/
@@ -134,22 +147,51 @@ não só a qualidade do que existe; um PEX do gabinete espera):
    exista) · mapa de vãos exteriores e interiores · mapa de armários ·
    pormenores construtivos 1:5/1:10 (vãos, cobertura, muros) · cores
    convencionais. Cruza com o índice/títulos das folhas e LISTA o que falta,
-   com severidade conforme o peso da peça.
+   com severidade conforme o peso da peça.`;
 
-EXCEPÇÃO da casa: o gabinete NÃO usa escala gráfica nas folhas — a sua
-ausência nunca é achado.
-
-3. SEVERIDADES: CRÍTICA (compromete concurso/segurança/gera trabalhos a mais), IMPORTANTE (afecta fiabilidade/leitura, corrigir antes de mercado), RECOMENDÁVEL (qualidade documental). PRIORIDADES: P1 imediata (antes de qualquer consulta), P2 curto prazo (revisão de fecho), P3 com as especialidades, P4 qualidade contínua.
-
-4. HONESTIDADE METODOLÓGICA (obrigatória): a tua matéria-prima é a CAMADA DE TEXTO dos documentos — lês legendas, notas-chave, cotas numéricas, rótulos e descrições, mas NÃO vês o desenho gráfico (traço, sobreposições visuais, escala do grafismo). Nunca afirmes juízos sobre o que não podes ver; regista essa fronteira em limitacoes_da_analise. Nas folhas das peças desenhadas, avalia o que o texto mostra: há legenda? há rótulo completo (processo, data, escala, número)? há notas-chave a ligar ao MQ? há cotas? Se uma folha não tiver texto nenhum, assinala-o.
-
-Não inventes: cita sempre o artigo/código/folha exactos. Sê tão exigente como o relatório do 203 — encontrou 28 observações num projecto de 7,6/10.`;
+// Compõe a secção das regras a partir do que a app enviou (Memória do
+// gabinete → Regras das peças). Tecto de tamanho: prompt não é sítio para
+// listas infinitas.
+function seccaoRegras(regras) {
+  if (!Array.isArray(regras) || regras.length === 0) return REGRAS_ORIGEM;
+  const limpas = regras
+    .filter((r) => r && typeof r.texto === "string" && r.texto.trim())
+    .slice(0, 120);
+  let total = 0;
+  const dentro = [];
+  for (const r of limpas) {
+    total += r.texto.length;
+    if (total > 20000) break;
+    dentro.push(r);
+  }
+  if (dentro.length === 0) return REGRAS_ORIGEM;
+  const ia = dentro.filter((r) => r.verificacao !== "folha_obrigatoria");
+  const folhas = dentro.filter((r) => r.verificacao === "folha_obrigatoria");
+  const partes = [];
+  if (ia.length) {
+    partes.push("2b. REGRAS DA CASA (escritas pelo gabinete na app — verifica "
+      + "SEMPRE cada uma, com a gravidade indicada; quando a folha em causa é "
+      + "nomeada, aplica-a a essa folha):\n"
+      + ia.map((r) => `   · [${r.gravidade || "IMPORTANTE"}`
+          + `${r.folha ? " · " + r.folha : ""}] ${r.texto}`).join("\n"));
+  }
+  if (folhas.length) {
+    partes.push("2c. COMPLETUDE — FOLHAS OBRIGATÓRIAS do caderno (cruza com o "
+      + "índice/títulos das folhas e LISTA o que falta, com a gravidade "
+      + "indicada):\n"
+      + folhas.map((r) => `   · [${r.gravidade || "IMPORTANTE"}] `
+          + `${r.folha ? r.folha + " — " : ""}${r.texto}`).join("\n"));
+  }
+  return partes.join("\n\n");
+}
 
 export default async function handler(req, res) {
   if (!autorizar(req, res)) return;
   if (!dentroDaTaxa(res, "avaliar-tecnica", 4)) return;
   if (!corpoAceitavel(req, res, 4 * 1024 * 1024)) return;
   const docs = (req.body && req.body.docs) || {};
+  const sistema = SISTEMA.replace("{{REGRAS_DA_CASA}}",
+                                  seccaoRegras(req.body && req.body.regras));
   const partes = [];
   for (const [chave, rotulo] of [
     ["memoria", "MEMÓRIA DESCRITIVA"],
@@ -180,7 +222,7 @@ export default async function handler(req, res) {
         // prioridades) e o pensamento também. Já se viu o JSON sair cortado a
         // 32000 («Unterminated string») — tecto bem folgado.
         max_tokens: 48000,
-        system: SISTEMA,
+        system: sistema,
         messages: [
           { role: "user", content: `Entrega PEX a avaliar:\n\n${partes.join("\n\n")}` },
         ],
