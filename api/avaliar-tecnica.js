@@ -10,7 +10,7 @@
 // página (a camada de texto do PDF: legendas, notas-chave, cotas, rótulos).
 // Modelo: claude-sonnet-5 (configurável por ANTHROPIC_MODEL_AVALIACAO).
 
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const ESQUEMA = {
   type: "object",
@@ -243,17 +243,8 @@ export default async function handler(req, res) {
     if (dados.stop_reason === "refusal") {
       return res.status(422).json({ error: "O modelo recusou o pedido por segurança." });
     }
-    const bloco = (dados.content || []).find((b) => b.type === "text");
-    if (!bloco) {
-      const razao = dados.stop_reason || "desconhecido";
-      return res.status(502).json({
-        error: `Resposta do modelo sem texto (stop_reason: ${razao}). `
-          + (razao === "max_tokens"
-            ? "O pensamento esgotou o limite — aumentar max_tokens ou reduzir o conteúdo."
-            : "Tente de novo."),
-      });
-    }
-    const relatorio = JSON.parse(bloco.text);
+    const relatorio = lerJsonDoModelo(dados, res, "o relatório");
+    if (!relatorio) return;
     return res.status(200).json({ relatorio, modelo });
   } catch (e) {
     return res.status(502).json({ error: "Falha na avaliação: " + (e && e.message ? e.message : String(e)) });

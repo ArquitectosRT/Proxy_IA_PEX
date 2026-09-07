@@ -17,7 +17,7 @@
 //   ANTHROPIC_API_KEY · APP_PASSWORD · ANTHROPIC_MODEL (opcional).
 
 // Saída estruturada: obriga o modelo a devolver exactamente estes campos.
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const RESUMO_SCHEMA = {
   type: "object",
@@ -124,48 +124,8 @@ export default async function handler(req, res) {
     if (dados.stop_reason === "refusal") {
       return res.status(422).json({ error: "O modelo recusou o pedido por segurança." });
     }
-    const bloco = (dados.content || []).find((b) => b.type === "text");
-    if (!bloco) {
-      const razao = dados.stop_reason || "desconhecido";
-      return res.status(502).json({
-        error: `Resposta do modelo sem texto (stop_reason: ${razao}).`,
-      });
-    }
-
-    // O CORTE VERIFICA-SE ANTES DE LER O JSON, e verifica-se MESMO HAVENDO
-    // TEXTO — é essa a diferença que faltava.
-    //
-    // Os outros canais (auditar, avaliar-tecnica) só olham para o
-    // `stop_reason` quando NÃO vem texto nenhum. Mas o corte por limite não
-    // deixa a resposta vazia: deixa-a INCOMPLETA. O texto vem, o
-    // `JSON.parse` rebenta, e o arquitecto lê «Unterminated string in JSON at
-    // position 3480» — uma frase de programador que não diz o que aconteceu
-    // nem o que fazer. Foi o que ele viu a 07/09/2026, e é a segunda metade
-    // deste defeito: subir o tecto sem isto deixava o próximo corte tão
-    // incompreensível como este.
-    if (dados.stop_reason === "max_tokens") {
-      return res.status(502).json({
-        error:
-          "O modelo esgotou o limite de resposta e o rascunho ficou a meio — "
-          + "nada foi escrito. Costuma acontecer quando a classe de solo traz "
-          + "muitos parâmetros. Tente de novo; se repetir, é preciso subir o "
-          + "max_tokens deste canal no proxy.",
-      });
-    }
-
-    let resumo;
-    try {
-      resumo = JSON.parse(bloco.text);
-    } catch (e) {
-      // Rede de segurança: se o JSON vier estragado por outra razão que não o
-      // corte, diz-se o que é em vez de deixar passar a mensagem do parser.
-      return res.status(502).json({
-        error:
-          "O modelo devolveu uma resposta que não se consegue ler "
-          + `(stop_reason: ${dados.stop_reason || "desconhecido"}). Tente de novo. `
-          + `Pormenor técnico: ${e && e.message ? e.message : String(e)}`,
-      });
-    }
+    const resumo = lerJsonDoModelo(dados, res, "o resumo");
+    if (!resumo) return;
     return res.status(200).json({ resumo, modelo });
   } catch (e) {
     return res.status(502).json({ error: "Falha ao redigir o resumo: " + (e && e.message ? e.message : String(e)) });

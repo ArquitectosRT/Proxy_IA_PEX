@@ -79,3 +79,56 @@ export function escolherModelo(envVar, fallback) {
   const v = process.env[envVar];
   return (v && String(v).trim()) || fallback;
 }
+
+// -------- ler o JSON que o modelo devolveu, sem mensagens de programador ----
+//
+// PORQUE É QUE ISTO EXISTE (visto no ecrã a 07/09/2026): ao pedir o rascunho
+// da memória do PDM, o arquitecto leu
+//     «Falha ao redigir o resumo: Unterminated string in JSON at position 3480»
+// A resposta do modelo tinha sido CORTADA por ter esgotado o `max_tokens`, e o
+// canal atirou-a directamente ao `JSON.parse`.
+//
+// A ARMADILHA, e é ela que justifica um sítio comum: um corte por limite NÃO
+// deixa a resposta vazia — deixa-a INCOMPLETA. Os canais que verificavam o
+// `stop_reason` só o faziam quando NÃO vinha texto nenhum, e por isso nunca
+// apanhavam este caso. Sete dos oito canais tinham o mesmo defeito.
+//
+// Subir o tecto não chega: um dia volta a acontecer, e o que importa é que
+// nesse dia a app diga o que se passou em vez de uma frase de parser.
+//
+// Devolve o objecto lido, ou `null` DEPOIS DE JÁ TER RESPONDIDO — quem chama
+// só tem de fazer `if (!x) return;`.
+export function lerJsonDoModelo(dados, res, oQue) {
+  const razao = (dados && dados.stop_reason) || "desconhecido";
+  const bloco = ((dados && dados.content) || []).find((b) => b.type === "text");
+
+  if (!bloco) {
+    res.status(502).json({
+      error: `Resposta do modelo sem texto (stop_reason: ${razao}).`
+        + (razao === "max_tokens"
+          ? " O limite de resposta esgotou-se antes de escrever seja o que for."
+          : " Tente de novo."),
+    });
+    return null;
+  }
+
+  if (razao === "max_tokens") {
+    res.status(502).json({
+      error: `O modelo esgotou o limite de resposta e ${oQue} ficou a meio — `
+        + "nada foi aproveitado. Tente de novo; se repetir, é preciso reduzir o "
+        + "que se manda de cada vez ou subir o max_tokens deste canal no proxy.",
+    });
+    return null;
+  }
+
+  try {
+    return JSON.parse(bloco.text);
+  } catch (e) {
+    res.status(502).json({
+      error: `O modelo devolveu ${oQue} numa forma que não se consegue ler `
+        + `(stop_reason: ${razao}). Tente de novo. `
+        + `Pormenor técnico: ${e && e.message ? e.message : String(e)}`,
+    });
+    return null;
+  }
+}

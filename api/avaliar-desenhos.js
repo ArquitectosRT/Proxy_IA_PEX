@@ -8,7 +8,7 @@
 // sobreposições, esquadria. Limite honesto (dito no esquema): a resolução da
 // rasterização não permite julgar espessuras de traço ao milímetro.
 
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const ESQUEMA = {
   type: "object",
@@ -187,20 +187,8 @@ export default async function handler(req, res) {
       const msg = (dados && dados.error && dados.error.message) || "Erro na API da Anthropic.";
       return res.status(resposta.status).json({ error: msg });
     }
-    const bloco = (dados.content || []).find((c) => c.type === "text");
-    if (!bloco || !bloco.text) {
-      const razao = dados.stop_reason || "sem texto";
-      return res.status(502).json({
-        error: "A resposta veio vazia (" + razao + ")."
-          + (razao === "max_tokens" ? " Reduzir o tamanho do lote." : ""),
-      });
-    }
-    let avaliacao;
-    try {
-      avaliacao = JSON.parse(bloco.text);
-    } catch (e) {
-      return res.status(502).json({ error: "JSON inválido do modelo: " + e.message });
-    }
+    const avaliacao = lerJsonDoModelo(dados, res, "a avaliação das folhas");
+    if (!avaliacao) return;
     return res.status(200).json({ modelo, ...avaliacao });
   } catch (e) {
     return res.status(500).json({ error: "Falha a contactar a Anthropic: " + e.message });

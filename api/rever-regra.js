@@ -9,7 +9,7 @@
 // Duas fases, como manda a casa: o modelo PROPÕE, o arquitecto aprova, e só
 // então a regra entra na memória do gabinete.
 
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const ESQUEMA = {
   type: "object",
@@ -107,18 +107,8 @@ export default async function handler(req, res) {
       const msg = (dados && dados.error && dados.error.message) || "Erro na API da Anthropic.";
       return res.status(resposta.status).json({ error: msg });
     }
-    const bloco = (dados.content || []).find((c) => c.type === "text");
-    if (!bloco || !bloco.text) {
-      return res.status(502).json({
-        error: "A resposta veio vazia (" + (dados.stop_reason || "sem texto") + ").",
-      });
-    }
-    let proposta;
-    try {
-      proposta = JSON.parse(bloco.text);
-    } catch (e) {
-      return res.status(502).json({ error: "JSON inválido do modelo: " + e.message });
-    }
+    const proposta = lerJsonDoModelo(dados, res, "a regra revista");
+    if (!proposta) return;
     return res.status(200).json({ modelo, ...proposta });
   } catch (e) {
     return res.status(500).json({ error: "Falha a contactar a Anthropic: " + e.message });

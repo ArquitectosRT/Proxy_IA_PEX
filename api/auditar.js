@@ -9,7 +9,7 @@
 //
 // É uma proposta: o arquitecto lê e valida. A app não age sobre os achados.
 
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const ESQUEMA = {
   type: "object",
@@ -102,17 +102,8 @@ export default async function handler(req, res) {
     if (dados.stop_reason === "refusal") {
       return res.status(422).json({ error: "O modelo recusou o pedido por segurança." });
     }
-    const bloco = (dados.content || []).find((b) => b.type === "text");
-    if (!bloco) {
-      const razao = dados.stop_reason || "desconhecido";
-      return res.status(502).json({
-        error: `Resposta do modelo sem texto (stop_reason: ${razao}). `
-          + (razao === "max_tokens"
-            ? "O pensamento esgotou o limite — aumentar max_tokens ou reduzir o conteúdo."
-            : "Tente de novo."),
-      });
-    }
-    const auditoria = JSON.parse(bloco.text);
+    const auditoria = lerJsonDoModelo(dados, res, "a auditoria");
+    if (!auditoria) return;
     return res.status(200).json({ auditoria, modelo });
   } catch (e) {
     return res.status(502).json({ error: "Falha na auditoria: " + (e && e.message ? e.message : String(e)) });

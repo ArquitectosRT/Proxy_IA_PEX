@@ -15,7 +15,7 @@
 
 // Esquema da ficha — a saída estruturada obriga o modelo a devolver EXACTAMENTE
 // estes campos. Valores em falta ficam "[a confirmar]" (regra do molde).
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const FICHA_SCHEMA = {
   type: "object",
@@ -87,11 +87,8 @@ export default async function handler(req, res) {
     if (dados.stop_reason === "refusal") {
       return res.status(422).json({ error: "O modelo recusou o pedido por segurança." });
     }
-    const bloco = (dados.content || []).find((b) => b.type === "text");
-    if (!bloco) {
-      return res.status(502).json({ error: "Resposta do modelo sem texto." });
-    }
-    const ficha = JSON.parse(bloco.text);
+    const ficha = lerJsonDoModelo(dados, res, "a ficha da obra");
+    if (!ficha) return;
     return res.status(200).json({ ficha, modelo });
   } catch (e) {
     return res.status(502).json({ error: "Falha ao extrair a ficha: " + (e && e.message ? e.message : String(e)) });

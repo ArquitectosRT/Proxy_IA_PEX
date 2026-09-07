@@ -8,7 +8,7 @@
 //
 // Modelo: claude-sonnet-5 por omissão (ANTHROPIC_MODEL_CLAUSULAS para mudar).
 
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const ESQUEMA = {
   type: "object",
@@ -91,12 +91,8 @@ export default async function handler(req, res) {
     if (dados.stop_reason === "refusal") {
       return res.status(422).json({ error: "O modelo recusou o pedido por segurança." });
     }
-    const bloco = (dados.content || []).find((b) => b.type === "text");
-    if (!bloco) {
-      const razao = dados.stop_reason || "desconhecido";
-      return res.status(502).json({ error: `Resposta sem texto (stop_reason: ${razao}).` });
-    }
-    const out = JSON.parse(bloco.text);
+    const out = lerJsonDoModelo(dados, res, "as cláusulas");
+    if (!out) return;
     return res.status(200).json({ clausulas: out.clausulas || [], modelo });
   } catch (e) {
     return res.status(502).json({ error: "Falha ao redigir as cláusulas: " + (e && e.message ? e.message : String(e)) });

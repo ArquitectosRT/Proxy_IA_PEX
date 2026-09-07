@@ -3,7 +3,7 @@
 // de raiz). O mesmo padrão das cláusulas do CE: o modelo propõe, o arquitecto
 // revê no ecrã, e só então se grava na ficha — que depois gera a Memória.
 
-import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo } from "./_comum.js";
+import { autorizar, corpoAceitavel, dentroDaTaxa, escolherModelo, lerJsonDoModelo } from "./_comum.js";
 
 const ESQUEMA = {
   type: "object",
@@ -105,16 +105,8 @@ export default async function handler(req, res) {
       const msg = (dados && dados.error && dados.error.message) || "Erro na API da Anthropic.";
       return res.status(resposta.status).json({ error: msg });
     }
-    const bloco = (dados.content || []).find((c) => c.type === "text");
-    if (!bloco || !bloco.text) {
-      return res.status(502).json({ error: "A resposta veio vazia (" + (dados.stop_reason || "?") + ")." });
-    }
-    let saida;
-    try {
-      saida = JSON.parse(bloco.text);
-    } catch (e) {
-      return res.status(502).json({ error: "JSON inválido do modelo: " + e.message });
-    }
+    const saida = lerJsonDoModelo(dados, res, "a memória descritiva");
+    if (!saida) return;
     return res.status(200).json({ modelo, ...saida });
   } catch (e) {
     return res.status(500).json({ error: "Falha a contactar a Anthropic: " + e.message });
