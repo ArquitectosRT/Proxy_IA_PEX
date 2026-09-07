@@ -103,7 +103,13 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: modelo,
-        max_tokens: 4096,
+        // 4096 era o tecto MAIS BAIXO de todos os canais longos (os outros vão
+        // de 16.000 a 48.000), e o que aqui se pede não é pouco: UMA LINHA POR
+        // PARÂMETRO APURADO — em Fafe são até 34, cada uma com valor, limite,
+        // artigo e situação — MAIS um capítulo inteiro de prosa para a memória
+        // descritiva. A 07/09/2026, no 203-2025, a resposta saiu cortada a meio
+        // e a app mostrou «Unterminated string in JSON at position 3480».
+        max_tokens: 16000,
         system: SISTEMA,
         messages: [{ role: "user", content: material }],
         output_config: { format: { type: "json_schema", schema: RESUMO_SCHEMA } },
@@ -120,9 +126,46 @@ export default async function handler(req, res) {
     }
     const bloco = (dados.content || []).find((b) => b.type === "text");
     if (!bloco) {
-      return res.status(502).json({ error: "Resposta do modelo sem texto." });
+      const razao = dados.stop_reason || "desconhecido";
+      return res.status(502).json({
+        error: `Resposta do modelo sem texto (stop_reason: ${razao}).`,
+      });
     }
-    const resumo = JSON.parse(bloco.text);
+
+    // O CORTE VERIFICA-SE ANTES DE LER O JSON, e verifica-se MESMO HAVENDO
+    // TEXTO — é essa a diferença que faltava.
+    //
+    // Os outros canais (auditar, avaliar-tecnica) só olham para o
+    // `stop_reason` quando NÃO vem texto nenhum. Mas o corte por limite não
+    // deixa a resposta vazia: deixa-a INCOMPLETA. O texto vem, o
+    // `JSON.parse` rebenta, e o arquitecto lê «Unterminated string in JSON at
+    // position 3480» — uma frase de programador que não diz o que aconteceu
+    // nem o que fazer. Foi o que ele viu a 07/09/2026, e é a segunda metade
+    // deste defeito: subir o tecto sem isto deixava o próximo corte tão
+    // incompreensível como este.
+    if (dados.stop_reason === "max_tokens") {
+      return res.status(502).json({
+        error:
+          "O modelo esgotou o limite de resposta e o rascunho ficou a meio — "
+          + "nada foi escrito. Costuma acontecer quando a classe de solo traz "
+          + "muitos parâmetros. Tente de novo; se repetir, é preciso subir o "
+          + "max_tokens deste canal no proxy.",
+      });
+    }
+
+    let resumo;
+    try {
+      resumo = JSON.parse(bloco.text);
+    } catch (e) {
+      // Rede de segurança: se o JSON vier estragado por outra razão que não o
+      // corte, diz-se o que é em vez de deixar passar a mensagem do parser.
+      return res.status(502).json({
+        error:
+          "O modelo devolveu uma resposta que não se consegue ler "
+          + `(stop_reason: ${dados.stop_reason || "desconhecido"}). Tente de novo. `
+          + `Pormenor técnico: ${e && e.message ? e.message : String(e)}`,
+      });
+    }
     return res.status(200).json({ resumo, modelo });
   } catch (e) {
     return res.status(502).json({ error: "Falha ao redigir o resumo: " + (e && e.message ? e.message : String(e)) });
